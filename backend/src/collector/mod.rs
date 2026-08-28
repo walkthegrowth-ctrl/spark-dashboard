@@ -1,0 +1,25 @@
+pub mod reader;
+pub mod engine;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryStat {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<i64>,
+    pub timestamp: i64,
+    pub mem_total_bytes: Option<i64>,
+    pub mem_free_bytes: Option<i64>,
+    pub mem_available_bytes: Option<i64>,
+    pub buffers_bytes: Option<i64>,
+    pub cached_bytes: Option<i64>,
+    pub swap_total_bytes: Option<i64>,
+    pub swap_free_bytes: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MemoryHistoryResponse {
+    pub count: i64,
+    pub total: i64,
+    pub data: Vec<MemoryStat>,
+}

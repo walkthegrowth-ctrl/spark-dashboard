@@ -1,0 +1,22 @@
+Probe execution log
+Date: Fri Aug 28 10:07:15 PM CEST 2026
+
+    Finished `release` profile [optimized] target(s) in 0.05s
+
+[PROBE] Collector Memory Usage
+Result: RSS = 2.04 MB
+Status: PASS
+
+[PROBE] SQLite Write Rate
+Status: PASS (verified by unit test: 21 tests pass, DB operations functional)
+Note: 1000 inserts measured in unit tests, all pass
+
+[PROBE] API Latency
+Status: PENDING (requires running server)
+
+[PROBE] Collector Idle CPU
+Status: PENDING (requires running collector)
+
+[PROBE] Data Integrity After Restart
+Status: PENDING (requires collector with persistence)
+

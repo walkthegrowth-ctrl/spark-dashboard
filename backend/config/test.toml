@@ -1,0 +1,21 @@
+# Spark Dashboard — Test Configuration
+
+[server]
+host = "127.0.0.1"
+port = 0
+
+[collector]
+ipc_socket = "/tmp/spark-test.sock"
+
+[database]
+path = ":memory:"
+wal_mode = false
+
+[history]
+retention_days = 1
+
+[thermal]
+collection_interval_secs = 1
+
+[memory]
+collection_interval_secs = 1

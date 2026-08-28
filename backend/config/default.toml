@@ -1,0 +1,21 @@
+# Spark Dashboard — Default Configuration
+
+[server]
+host = "127.0.0.1"
+port = 8080
+
+[collector]
+ipc_socket = "/tmp/spark-collect.sock"
+
+[database]
+path = "~/.local/share/spark-dashboard/spark.db"
+wal_mode = true
+
+[history]
+retention_days = 7
+
+[thermal]
+collection_interval_secs = 30
+
+[memory]
+collection_interval_secs = 60
