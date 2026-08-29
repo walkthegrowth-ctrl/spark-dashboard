@@ -55,6 +55,21 @@
     return 'Critical';
   }
 
+  function displayLabel(thermal) {
+    if (thermal.sensor_label) return thermal.sensor_label;
+    if (thermal.sensor_type === 'acpitz') return `Zone ${thermal.zone}`;
+    return thermal.zone;
+  }
+
+  function tooltipText(thermal) {
+    const parts = [];
+    parts.push(`${thermal.sensor_type} / ${thermal.zone}`);
+    if (thermal.trip_point_type && thermal.trip_point_temp_celsius) {
+      parts.push(`${thermal.trip_point_type}: ${thermal.trip_point_temp_celsius.toFixed(1)} °C`);
+    }
+    return parts.join(' · ');
+  }
+
   $: maxTemp = thermals
     ? Math.max(...thermals.map(t => t.temperature_celsius ?? 0))
     : 0;
@@ -79,8 +94,8 @@
   {:else if thermals}
     <div class="stats">
       {#each thermals as thermal}
-        <div class="stat" style="border-color: {tempColor(thermal.temperature_celsius)}">
-          <span class="label">{thermal.zone}</span>
+        <div class="stat" data-tooltip="{tooltipText(thermal)}" style="border-color: {tempColor(thermal.temperature_celsius)}">
+          <span class="label">{displayLabel(thermal)}</span>
           <span class="value" style="color: {tempColor(thermal.temperature_celsius)}">
             {formatTemp(thermal.temperature_celsius)}
           </span>
@@ -147,6 +162,8 @@
     border-radius: 6px;
     border: 1px solid #333;
     background: #0a0a0a;
+    position: relative;
+    cursor: default;
   }
   .label {
     font-size: 0.65rem;
@@ -163,6 +180,35 @@
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+  .stat[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+    color: #ccc;
+    font-size: 0.7rem;
+    font-family: monospace;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  .stat[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #444;
+    z-index: 10;
+    pointer-events: none;
   }
   .bar-container {
     margin-top: 1rem;

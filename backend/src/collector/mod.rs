@@ -33,6 +33,12 @@ pub struct ThermalStat {
     pub zone: String,
     pub sensor_type: String,
     pub temperature_celsius: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trip_point_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trip_point_temp_celsius: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sensor_label: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

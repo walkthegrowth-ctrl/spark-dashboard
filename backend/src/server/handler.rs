@@ -311,6 +311,9 @@ mod tests {
             zone: "0".to_string(),
             sensor_type: "acpitz".to_string(),
             temperature_celsius: Some(65.4),
+            trip_point_type: Some("critical".to_string()),
+            trip_point_temp_celsius: Some(105.0),
+            sensor_label: Some("Zone 0".to_string()),
         };
         db::insert_thermal_stat(&conn, &thermal).unwrap();
         conn

@@ -26,7 +26,10 @@ pub fn init_thermal_table(conn: &Connection) -> Result<()> {
             timestamp TEXT NOT NULL,
             zone TEXT NOT NULL,
             sensor_type TEXT NOT NULL,
-            temperature_celsius REAL
+            temperature_celsius REAL,
+            trip_point_type TEXT,
+            trip_point_temp_celsius REAL,
+            sensor_label TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_thermal_stats_timestamp ON thermal_stats(timestamp);
         CREATE INDEX IF NOT EXISTS idx_thermal_stats_zone ON thermal_stats(zone);",
@@ -36,9 +39,9 @@ pub fn init_thermal_table(conn: &Connection) -> Result<()> {
 pub fn insert_thermal_stat(conn: &Connection, stat: &ThermalStat) -> Result<i64> {
     let ts = stat.timestamp.to_string();
     conn.execute(
-        "INSERT INTO thermal_stats (timestamp, zone, sensor_type, temperature_celsius)
-         VALUES (?1, ?2, ?3, ?4)",
-        params![ts, stat.zone, stat.sensor_type, stat.temperature_celsius],
+        "INSERT INTO thermal_stats (timestamp, zone, sensor_type, temperature_celsius, trip_point_type, trip_point_temp_celsius, sensor_label)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![ts, stat.zone, stat.sensor_type, stat.temperature_celsius, stat.trip_point_type, stat.trip_point_temp_celsius, stat.sensor_label],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -53,7 +56,7 @@ pub fn get_latest_thermal_stats(conn: &Connection) -> Result<Vec<ThermalStat>> {
     match latest_ts {
         Some(ts) => {
             let mut stmt = conn.prepare(
-                "SELECT id, timestamp, zone, sensor_type, temperature_celsius
+                "SELECT id, timestamp, zone, sensor_type, temperature_celsius, trip_point_type, trip_point_temp_celsius, sensor_label
                  FROM thermal_stats WHERE timestamp = ?1 ORDER BY zone",
             )?;
             let rows = stmt.query_map(params![ts], |row| {
@@ -63,6 +66,9 @@ pub fn get_latest_thermal_stats(conn: &Connection) -> Result<Vec<ThermalStat>> {
                     zone: row.get(2)?,
                     sensor_type: row.get(3)?,
                     temperature_celsius: row.get(4)?,
+                    trip_point_type: row.get(5)?,
+                    trip_point_temp_celsius: row.get(6)?,
+                    sensor_label: row.get(7)?,
                 })
             })?;
             Ok(rows.collect::<Result<Vec<_>>>()?)
@@ -79,7 +85,7 @@ pub fn get_thermal_stats_paginated(conn: &Connection, limit: i32, offset: i32) -
     )?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, timestamp, zone, sensor_type, temperature_celsius
+        "SELECT id, timestamp, zone, sensor_type, temperature_celsius, trip_point_type, trip_point_temp_celsius, sensor_label
          FROM thermal_stats ORDER BY timestamp ASC LIMIT ?1 OFFSET ?2",
     )?;
     let rows = stmt.query_map(params![limit, offset], |row| {
@@ -89,6 +95,9 @@ pub fn get_thermal_stats_paginated(conn: &Connection, limit: i32, offset: i32) -
             zone: row.get(2)?,
             sensor_type: row.get(3)?,
             temperature_celsius: row.get(4)?,
+            trip_point_type: row.get(5)?,
+            trip_point_temp_celsius: row.get(6)?,
+            sensor_label: row.get(7)?,
         })
     })?;
     let data: Vec<ThermalStat> = rows.collect::<Result<_>>()?;
@@ -263,6 +272,9 @@ mod tests {
             zone: "0".to_string(),
             sensor_type: "acpitz".to_string(),
             temperature_celsius: Some(65.4),
+            trip_point_type: Some("critical".to_string()),
+            trip_point_temp_celsius: Some(105.0),
+            sensor_label: Some("Zone 0".to_string()),
         }
     }
 
@@ -282,6 +294,9 @@ mod tests {
         let latest = get_latest_thermal_stats(&conn).unwrap();
         assert!(!latest.is_empty());
         assert_eq!(latest[0].temperature_celsius, Some(65.4));
+        assert_eq!(latest[0].trip_point_type, Some("critical".to_string()));
+        assert_eq!(latest[0].trip_point_temp_celsius, Some(105.0));
+        assert_eq!(latest[0].sensor_label, Some("Zone 0".to_string()));
     }
 
     #[test]
