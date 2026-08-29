@@ -18,7 +18,7 @@ pub fn parse_proc_meminfo(content: &str) -> MemoryStat {
         }
         let key = parts[0].trim();
         let value_str = parts[1].trim().split_whitespace().next();
-        let value = value_str.and_then(|v| v.parse::<u64>().ok()).map(|v| v as i64);
+        let value = value_str.and_then(|v| v.parse::<u64>().ok()).map(|v| (v as i64) * 1024);
 
         match key {
             "MemTotal" => mem_total = value,
@@ -67,11 +67,11 @@ mod tests {
     #[test]
     fn test_parse_proc_meminfo_happy_path() {
         let stat = parse_proc_meminfo(&sample_meminfo());
-        assert_eq!(stat.mem_total_bytes, Some(16384000));
-        assert_eq!(stat.mem_free_bytes, Some(2048000));
-        assert_eq!(stat.mem_available_bytes, Some(8192000));
-        assert_eq!(stat.buffers_bytes, Some(512000));
-        assert_eq!(stat.cached_bytes, Some(4096000));
+        assert_eq!(stat.mem_total_bytes, Some(16384000 * 1024));
+        assert_eq!(stat.mem_free_bytes, Some(2048000 * 1024));
+        assert_eq!(stat.mem_available_bytes, Some(8192000 * 1024));
+        assert_eq!(stat.buffers_bytes, Some(512000 * 1024));
+        assert_eq!(stat.cached_bytes, Some(4096000 * 1024));
         assert_eq!(stat.swap_total_bytes, Some(0));
         assert_eq!(stat.swap_free_bytes, Some(0));
     }
@@ -80,8 +80,8 @@ mod tests {
     fn test_parse_proc_meminfo_missing_field() {
         let content = "MemTotal:       16384000 kB\nMemFree:         2048000 kB".to_string();
         let stat = parse_proc_meminfo(&content);
-        assert_eq!(stat.mem_total_bytes, Some(16384000));
-        assert_eq!(stat.mem_free_bytes, Some(2048000));
+        assert_eq!(stat.mem_total_bytes, Some(16384000 * 1024));
+        assert_eq!(stat.mem_free_bytes, Some(2048000 * 1024));
         assert_eq!(stat.mem_available_bytes, None);
         assert_eq!(stat.buffers_bytes, None);
         assert_eq!(stat.cached_bytes, None);
@@ -92,7 +92,7 @@ mod tests {
         let content = "MemTotal:       abc kB\nMemFree:         2048000 kB".to_string();
         let stat = parse_proc_meminfo(&content);
         assert_eq!(stat.mem_total_bytes, None);
-        assert_eq!(stat.mem_free_bytes, Some(2048000));
+        assert_eq!(stat.mem_free_bytes, Some(2048000 * 1024));
     }
 
     #[test]
@@ -113,7 +113,7 @@ mod tests {
          SomeUnknownField:  999999 kB\n\
          MemFree:         2048000 kB".to_string();
         let stat = parse_proc_meminfo(&content);
-        assert_eq!(stat.mem_total_bytes, Some(16384000));
-        assert_eq!(stat.mem_free_bytes, Some(2048000));
+        assert_eq!(stat.mem_total_bytes, Some(16384000 * 1024));
+        assert_eq!(stat.mem_free_bytes, Some(2048000 * 1024));
     }
 }

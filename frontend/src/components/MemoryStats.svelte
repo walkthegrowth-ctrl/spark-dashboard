@@ -51,7 +51,7 @@
 
   onMount(fetchMemory);
 
-  const interval = setInterval(fetchMemory, 5000);
+  const interval = setInterval(fetchMemory, 1000);
 </script>
 
 <div class="card">
