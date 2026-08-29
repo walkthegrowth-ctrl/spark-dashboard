@@ -63,7 +63,7 @@ pub fn load_config(path: &str) -> Config {
 
 fn parse_config(content: &str) -> Config {
     let mut server_host = "127.0.0.1".to_string();
-    let mut server_port: u16 = 8080;
+    let mut server_port: u16 = 8090;
     let mut ipc_socket = "/tmp/spark-collect.sock".to_string();
     let mut db_path = "~/.local/share/spark-dashboard/spark.db".to_string();
     let mut wal_mode = true;
@@ -85,7 +85,7 @@ fn parse_config(content: &str) -> Config {
 
         match key {
             "host" => server_host = value.to_string(),
-            "port" => server_port = value.parse().unwrap_or(8080),
+            "port" => server_port = value.parse().unwrap_or(8090),
             "ipc_socket" => ipc_socket = value.to_string(),
             "path" => db_path = value.to_string(),
             "wal_mode" => wal_mode = value.parse().unwrap_or(true),
@@ -133,7 +133,7 @@ mod tests {
     fn test_load_default_config() {
         let config = parse_config("");
         assert_eq!(config.server.host, "127.0.0.1");
-        assert_eq!(config.server.port, 8080);
+        assert_eq!(config.server.port, 8090);
         assert_eq!(config.memory.collection_interval_secs, 60);
     }
 
