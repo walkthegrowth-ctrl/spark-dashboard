@@ -11,6 +11,16 @@ fn parse_milli(temp_milli: &str) -> Option<f64> {
     temp_milli.trim().parse::<i64>().ok().map(|t| t as f64 / 1000.0)
 }
 
+fn parse_milli_threshold(temp_milli: &str) -> Option<f64> {
+    parse_milli(temp_milli).and_then(|t| {
+        if t < -50.0 || t > 250.0 {
+            None
+        } else {
+            Some(t)
+        }
+    })
+}
+
 pub fn read_thermal_zones() -> Vec<ThermalStat> {
     let mut stats = Vec::new();
     let thermal_dir = Path::new("/sys/class/thermal");
@@ -37,7 +47,7 @@ pub fn read_thermal_zones() -> Vec<ThermalStat> {
 
                 let trip_point_type = read_optional(&path.join("trip_point_0_type"));
                 let trip_point_temp = read_optional(&path.join("trip_point_0_temp"))
-                    .and_then(|t| parse_milli(&t));
+                    .and_then(|t| parse_milli_threshold(&t));
 
                 stats.push(ThermalStat {
                     id: None,
@@ -86,10 +96,10 @@ pub fn read_hwmon_sensors() -> Vec<ThermalStat> {
                                 let label = read_optional(&label_path);
 
                                 let crit_path = path.join(format!("temp{}_crit", sensor_num));
-                                let crit_temp = read_optional(&crit_path).and_then(|t| parse_milli(&t));
+                                let crit_temp = read_optional(&crit_path).and_then(|t| parse_milli_threshold(&t));
 
                                 let max_path = path.join(format!("temp{}_max", sensor_num));
-                                let max_temp = read_optional(&max_path).and_then(|t| parse_milli(&t));
+                                let max_temp = read_optional(&max_path).and_then(|t| parse_milli_threshold(&t));
 
                                 let trip_type = if crit_temp.is_some() {
                                     Some("critical".to_string())
@@ -158,5 +168,17 @@ mod tests {
     fn test_parse_milli_invalid() {
         assert_eq!(parse_milli("abc"), None);
         assert_eq!(parse_milli(""), None);
+    }
+
+    #[test]
+    fn test_parse_milli_threshold_valid() {
+        assert_eq!(parse_milli_threshold("104800"), Some(104.8));
+        assert_eq!(parse_milli_threshold("0"), Some(0.0));
+    }
+
+    #[test]
+    fn test_parse_milli_threshold_bogus() {
+        assert_eq!(parse_milli_threshold("65261850"), None);
+        assert_eq!(parse_milli_threshold("-100000"), None);
     }
 }

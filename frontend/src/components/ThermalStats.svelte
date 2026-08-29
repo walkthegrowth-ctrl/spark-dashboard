@@ -56,8 +56,13 @@
   }
 
   function displayLabel(thermal) {
-    if (thermal.sensor_label) return thermal.sensor_label;
-    if (thermal.sensor_type === 'acpitz') return `Zone ${thermal.zone}`;
+    if (thermal.sensor_type === 'acpitz' && !thermal.zone.includes('_')) {
+      return `Zone ${thermal.zone}`;
+    }
+    const device = thermal.sensor_type.charAt(0).toUpperCase() + thermal.sensor_type.slice(1);
+    if (thermal.sensor_label) {
+      return `${device} ${thermal.sensor_label}`;
+    }
     return thermal.zone;
   }
 
