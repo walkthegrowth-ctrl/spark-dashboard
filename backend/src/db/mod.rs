@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, Result};
 
-use crate::collector::MemoryStat;
+use crate::collector::{MemoryStat, ThermalStat};
 
 pub fn init_memory_table(conn: &Connection) -> Result<()> {
     conn.execute_batch(
@@ -17,6 +17,82 @@ pub fn init_memory_table(conn: &Connection) -> Result<()> {
         );
         CREATE INDEX IF NOT EXISTS idx_memory_stats_timestamp ON memory_stats(timestamp);",
     )
+}
+
+pub fn init_thermal_table(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS thermal_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            zone TEXT NOT NULL,
+            sensor_type TEXT NOT NULL,
+            temperature_celsius REAL
+        );
+        CREATE INDEX IF NOT EXISTS idx_thermal_stats_timestamp ON thermal_stats(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_thermal_stats_zone ON thermal_stats(zone);",
+    )
+}
+
+pub fn insert_thermal_stat(conn: &Connection, stat: &ThermalStat) -> Result<i64> {
+    let ts = stat.timestamp.to_string();
+    conn.execute(
+        "INSERT INTO thermal_stats (timestamp, zone, sensor_type, temperature_celsius)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![ts, stat.zone, stat.sensor_type, stat.temperature_celsius],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn get_latest_thermal_stats(conn: &Connection) -> Result<Vec<ThermalStat>> {
+    let latest_ts: Option<String> = conn.query_row(
+        "SELECT timestamp FROM thermal_stats ORDER BY timestamp DESC LIMIT 1",
+        [],
+        |row| row.get(0),
+    ).ok();
+
+    match latest_ts {
+        Some(ts) => {
+            let mut stmt = conn.prepare(
+                "SELECT id, timestamp, zone, sensor_type, temperature_celsius
+                 FROM thermal_stats WHERE timestamp = ?1 ORDER BY zone",
+            )?;
+            let rows = stmt.query_map(params![ts], |row| {
+                Ok(ThermalStat {
+                    id: Some(row.get(0)?),
+                    timestamp: row.get::<_, String>(1)?.parse().unwrap_or(0),
+                    zone: row.get(2)?,
+                    sensor_type: row.get(3)?,
+                    temperature_celsius: row.get(4)?,
+                })
+            })?;
+            Ok(rows.collect::<Result<Vec<_>>>()?)
+        }
+        None => Ok(Vec::new()),
+    }
+}
+
+pub fn get_thermal_stats_paginated(conn: &Connection, limit: i32, offset: i32) -> Result<(Vec<ThermalStat>, i64)> {
+    let total: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM thermal_stats",
+        [],
+        |row| row.get(0),
+    )?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, timestamp, zone, sensor_type, temperature_celsius
+         FROM thermal_stats ORDER BY timestamp ASC LIMIT ?1 OFFSET ?2",
+    )?;
+    let rows = stmt.query_map(params![limit, offset], |row| {
+        Ok(ThermalStat {
+            id: Some(row.get(0)?),
+            timestamp: row.get::<_, String>(1)?.parse().unwrap_or(0),
+            zone: row.get(2)?,
+            sensor_type: row.get(3)?,
+            temperature_celsius: row.get(4)?,
+        })
+    })?;
+    let data: Vec<ThermalStat> = rows.collect::<Result<_>>()?;
+    Ok((data, total))
 }
 
 pub fn insert_memory_stat(conn: &Connection, stat: &MemoryStat) -> Result<i64> {
@@ -95,6 +171,7 @@ mod tests {
     fn test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         init_memory_table(&conn).unwrap();
+        init_thermal_table(&conn).unwrap();
         conn
     }
 
@@ -177,5 +254,51 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         init_memory_table(&conn).unwrap();
         init_memory_table(&conn).unwrap();
+    }
+
+    fn sample_thermal_stat() -> ThermalStat {
+        ThermalStat {
+            id: None,
+            timestamp: chrono::Utc::now().timestamp(),
+            zone: "0".to_string(),
+            sensor_type: "acpitz".to_string(),
+            temperature_celsius: Some(65.4),
+        }
+    }
+
+    #[test]
+    fn test_insert_thermal_stat() {
+        let conn = test_db();
+        let stat = sample_thermal_stat();
+        let id = insert_thermal_stat(&conn, &stat).unwrap();
+        assert!(id > 0);
+    }
+
+    #[test]
+    fn test_get_latest_thermal_stats() {
+        let conn = test_db();
+        let stat = sample_thermal_stat();
+        insert_thermal_stat(&conn, &stat).unwrap();
+        let latest = get_latest_thermal_stats(&conn).unwrap();
+        assert!(!latest.is_empty());
+        assert_eq!(latest[0].temperature_celsius, Some(65.4));
+    }
+
+    #[test]
+    fn test_get_thermal_stats_paginated() {
+        let conn = test_db();
+        for _ in 0..15 {
+            insert_thermal_stat(&conn, &sample_thermal_stat()).unwrap();
+        }
+        let (data, total) = get_thermal_stats_paginated(&conn, 10, 0).unwrap();
+        assert_eq!(data.len(), 10);
+        assert_eq!(total, 15);
+    }
+
+    #[test]
+    fn test_get_thermal_stats_empty() {
+        let conn = test_db();
+        let stats = get_latest_thermal_stats(&conn).unwrap();
+        assert!(stats.is_empty());
     }
 }

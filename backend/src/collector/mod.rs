@@ -1,5 +1,6 @@
 pub mod reader;
 pub mod engine;
+pub mod thermal;
 
 use serde::{Deserialize, Serialize};
 
@@ -22,4 +23,21 @@ pub struct MemoryHistoryResponse {
     pub count: i64,
     pub total: i64,
     pub data: Vec<MemoryStat>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThermalStat {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<i64>,
+    pub timestamp: i64,
+    pub zone: String,
+    pub sensor_type: String,
+    pub temperature_celsius: Option<f64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ThermalHistoryResponse {
+    pub count: i64,
+    pub total: i64,
+    pub data: Vec<ThermalStat>,
 }

@@ -12,7 +12,7 @@ use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use tiny_http::{Header, Response, Server, StatusCode};
 
-use crate::collector::MemoryHistoryResponse;
+use crate::collector::{MemoryHistoryResponse, ThermalHistoryResponse};
 use crate::db;
 
 fn static_dir() -> String {
@@ -65,6 +65,7 @@ pub fn start_server(host: &str, port: u16, db_path: &str) {
     }
     let conn = Connection::open(db_path).expect("Failed to open database");
     db::init_memory_table(&conn).expect("Failed to init memory table");
+    db::init_thermal_table(&conn).expect("Failed to init thermal table");
 
     let shutdown = Arc::new(AtomicBool::new(false));
 
@@ -138,6 +139,11 @@ fn handle_api(conn: &Connection, url: &str) -> (StatusCode, String, String) {
     } else if url.starts_with("/api/memory/history") {
         let params = parse_query_params(url);
         handle_memory_history(conn, &params)
+    } else if url.starts_with("/api/thermal/current") {
+        handle_thermal_current(conn)
+    } else if url.starts_with("/api/thermal/history") {
+        let params = parse_query_params(url);
+        handle_thermal_history(conn, &params)
     } else {
         (StatusCode(404), "Endpoint not found".to_string(), "application/json".to_string())
     }
@@ -202,6 +208,65 @@ fn handle_memory_history(conn: &Connection, params: &HashMap<String, String>) ->
     }
 }
 
+fn handle_thermal_current(conn: &Connection) -> (StatusCode, String, String) {
+    match db::get_latest_thermal_stats(conn) {
+        Ok(stats) if !stats.is_empty() => (
+            StatusCode(200),
+            serde_json::to_string(&stats).unwrap_or_else(|_| "[]".to_string()),
+            "application/json".to_string(),
+        ),
+        Ok(_) => (
+            StatusCode(503),
+            "No data available".to_string(),
+            "text/plain".to_string(),
+        ),
+        Err(_) => (
+            StatusCode(500),
+            serde_json::json!({"error": "database error"}).to_string(),
+            "application/json".to_string(),
+        ),
+    }
+}
+
+fn handle_thermal_history(conn: &Connection, params: &HashMap<String, String>) -> (StatusCode, String, String) {
+    let limit: i32 = params
+        .get("limit")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(100);
+    let offset: i32 = params
+        .get("offset")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+
+    if limit < 1 || limit > 1000 || offset < 0 {
+        return (
+            StatusCode(400),
+            serde_json::json!({"error": "invalid parameters"}).to_string(),
+            "application/json".to_string(),
+        );
+    }
+
+    match db::get_thermal_stats_paginated(conn, limit, offset) {
+        Ok((data, total)) => {
+            let response = ThermalHistoryResponse {
+                count: data.len() as i64,
+                total,
+                data,
+            };
+            (
+                StatusCode(200),
+                serde_json::to_string(&response).unwrap_or_else(|_| "{}".to_string()),
+                "application/json".to_string(),
+            )
+        }
+        Err(_) => (
+            StatusCode(500),
+            serde_json::json!({"error": "database error"}).to_string(),
+            "application/json".to_string(),
+        ),
+    }
+}
+
 fn parse_query_params(url: &str) -> HashMap<String, String> {
     let mut params = HashMap::new();
     if let Some(query) = url.split('?').nth(1) {
@@ -227,6 +292,7 @@ mod tests {
     fn test_db_with_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         db::init_memory_table(&conn).unwrap();
+        db::init_thermal_table(&conn).unwrap();
         let stat = crate::collector::MemoryStat {
             id: None,
             timestamp: chrono::Utc::now().timestamp(),
@@ -239,6 +305,14 @@ mod tests {
             swap_free_bytes: Some(0),
         };
         db::insert_memory_stat(&conn, &stat).unwrap();
+        let thermal = crate::collector::ThermalStat {
+            id: None,
+            timestamp: chrono::Utc::now().timestamp(),
+            zone: "0".to_string(),
+            sensor_type: "acpitz".to_string(),
+            temperature_celsius: Some(65.4),
+        };
+        db::insert_thermal_stat(&conn, &thermal).unwrap();
         conn
     }
 
@@ -310,5 +384,47 @@ mod tests {
         assert_eq!(content_type("data.json"), "application/json");
         assert_eq!(content_type("image.png"), "image/png");
         assert_eq!(content_type("unknown.xyz"), "application/octet-stream");
+    }
+
+    #[test]
+    fn test_handle_thermal_current() {
+        let conn = test_db_with_data();
+        let (status, _, _) = handle_thermal_current(&conn);
+        assert_eq!(status, StatusCode(200));
+    }
+
+    #[test]
+    fn test_handle_thermal_current_empty_db() {
+        let conn = Connection::open_in_memory().unwrap();
+        db::init_thermal_table(&conn).unwrap();
+        let (status, _, _) = handle_thermal_current(&conn);
+        assert_eq!(status, StatusCode(503));
+    }
+
+    #[test]
+    fn test_handle_thermal_history_defaults() {
+        let conn = test_db_with_data();
+        let params = HashMap::new();
+        let (status, _, _) = handle_thermal_history(&conn, &params);
+        assert_eq!(status, StatusCode(200));
+    }
+
+    #[test]
+    fn test_handle_thermal_history_custom_params() {
+        let conn = test_db_with_data();
+        let mut params = HashMap::new();
+        params.insert("limit".to_string(), "50".to_string());
+        params.insert("offset".to_string(), "10".to_string());
+        let (status, _, _) = handle_thermal_history(&conn, &params);
+        assert_eq!(status, StatusCode(200));
+    }
+
+    #[test]
+    fn test_handle_thermal_history_invalid_limit() {
+        let conn = test_db_with_data();
+        let mut params = HashMap::new();
+        params.insert("limit".to_string(), "-1".to_string());
+        let (status, _, _) = handle_thermal_history(&conn, &params);
+        assert_eq!(status, StatusCode(400));
     }
 }

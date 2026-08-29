@@ -1,5 +1,6 @@
 <script>
   import MemoryStats from './components/MemoryStats.svelte';
+  import ThermalStats from './components/ThermalStats.svelte';
 </script>
 
 <div class="container">
@@ -10,6 +11,7 @@
 
   <main>
     <MemoryStats />
+    <ThermalStats />
   </main>
 </div>
 
@@ -32,5 +34,8 @@
     font-size: 0.875rem;
     color: #888;
     margin-top: 0.25rem;
+  }
+  main > * + * {
+    margin-top: 1.5rem;
   }
 </style>
