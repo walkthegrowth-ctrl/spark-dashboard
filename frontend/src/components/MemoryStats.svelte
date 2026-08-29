@@ -1,18 +1,16 @@
 <script>
   import { onMount } from 'svelte';
 
-  let { apiBase = '' } = $props();
-
-  let memory = $state(null);
-  let loading = $state(true);
-  let error = $state(null);
-  let lastUpdate = $state(null);
+  let memory = null;
+  let loading = true;
+  let error = null;
+  let lastUpdate = null;
 
   async function fetchMemory() {
     try {
       loading = true;
       error = null;
-      const res = await fetch(`${apiBase}/api/memory/current`);
+      const res = await fetch('/api/memory/current');
       if (!res.ok) {
         if (res.status === 503) {
           error = 'No data available yet. Waiting for collector...';
@@ -47,10 +45,9 @@
     return d.toLocaleTimeString();
   }
 
-  function getPercentage() {
-    if (!memory || !memory.mem_available_bytes || !memory.mem_total_bytes || memory.mem_total_bytes === 0) return 0;
-    return Math.round((memory.mem_available_bytes / memory.mem_total_bytes) * 100);
-  }
+  $: percentage = memory && memory.mem_available_bytes && memory.mem_total_bytes
+    ? Math.round((memory.mem_available_bytes / memory.mem_total_bytes) * 100)
+    : 0;
 
   onMount(fetchMemory);
 
@@ -104,10 +101,10 @@
     <div class="bar-container">
       <div class="bar-label">
         <span>Available</span>
-        <span>{getPercentage()}%</span>
+        <span>{percentage}%</span>
       </div>
       <div class="bar">
-        <div class="bar-fill" style="width: {getPercentage()}%"></div>
+        <div class="bar-fill" style="width: {percentage}%"></div>
       </div>
     </div>
   {/if}

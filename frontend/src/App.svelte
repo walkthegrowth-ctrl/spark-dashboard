@@ -1,7 +1,5 @@
 <script>
   import MemoryStats from './components/MemoryStats.svelte';
-
-  let { apiBase = '' } = $props();
 </script>
 
 <div class="container">
@@ -11,7 +9,7 @@
   </header>
 
   <main>
-    <MemoryStats {apiBase} />
+    <MemoryStats />
   </main>
 </div>
 
