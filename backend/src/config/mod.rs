@@ -20,6 +20,8 @@ pub struct Config {
     pub history: HistoryConfig,
     pub thermal: ThermalConfig,
     pub memory: MemoryConfig,
+    pub compute: ComputeConfig,
+    pub power: PowerConfig,
 }
 
 #[derive(Debug)]
@@ -54,6 +56,16 @@ pub struct MemoryConfig {
     pub collection_interval_secs: u64,
 }
 
+#[derive(Debug)]
+pub struct ComputeConfig {
+    pub collection_interval_secs: u64,
+}
+
+#[derive(Debug)]
+pub struct PowerConfig {
+    pub collection_interval_secs: u64,
+}
+
 pub fn load_config(path: &str) -> Config {
     let content = fs::read_to_string(path).unwrap_or_else(|_| {
         include_str!("../../config/default.toml").to_string()
@@ -70,10 +82,17 @@ fn parse_config(content: &str) -> Config {
     let mut retention_days: u32 = 7;
     let mut thermal_interval: u64 = 30;
     let mut memory_interval: u64 = 60;
+    let mut compute_interval: u64 = 10;
+    let mut power_interval: u64 = 10;
 
+    let mut section = String::new();
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && line.ends_with(']') {
+            section = line[1..line.len() - 1].trim().to_ascii_lowercase();
             continue;
         }
         let parts: Vec<&str> = line.splitn(2, '=').collect();
@@ -83,19 +102,25 @@ fn parse_config(content: &str) -> Config {
         let key = parts[0].trim();
         let value = parts[1].trim().trim_matches('"');
 
-        match key {
-            "host" => server_host = value.to_string(),
-            "port" => server_port = value.parse().unwrap_or(8090),
-            "ipc_socket" => ipc_socket = value.to_string(),
-            "path" => db_path = value.to_string(),
-            "wal_mode" => wal_mode = value.parse().unwrap_or(true),
-            "retention_days" => retention_days = value.parse().unwrap_or(7),
-            "collection_interval_secs" => {
-                if thermal_interval == 30 {
-                    thermal_interval = value.parse().unwrap_or(30);
-                } else {
-                    memory_interval = value.parse().unwrap_or(60);
-                }
+        let sec = section.as_str();
+        match (sec, key) {
+            ("server", "host") => server_host = value.to_string(),
+            ("server", "port") => server_port = value.parse().unwrap_or(8090),
+            ("collector", "ipc_socket") => ipc_socket = value.to_string(),
+            ("database", "path") => db_path = value.to_string(),
+            ("database", "wal_mode") => wal_mode = value.parse().unwrap_or(true),
+            ("history", "retention_days") => retention_days = value.parse().unwrap_or(7),
+            ("thermal", "collection_interval_secs") => {
+                thermal_interval = value.parse().unwrap_or(30)
+            }
+            ("memory", "collection_interval_secs") => {
+                memory_interval = value.parse().unwrap_or(60)
+            }
+            ("compute", "collection_interval_secs") => {
+                compute_interval = value.parse().unwrap_or(10)
+            }
+            ("power", "collection_interval_secs") => {
+                power_interval = value.parse().unwrap_or(10)
             }
             _ => {}
         }
@@ -121,6 +146,12 @@ fn parse_config(content: &str) -> Config {
         },
         memory: MemoryConfig {
             collection_interval_secs: memory_interval,
+        },
+        compute: ComputeConfig {
+            collection_interval_secs: compute_interval,
+        },
+        power: PowerConfig {
+            collection_interval_secs: power_interval,
         },
     }
 }

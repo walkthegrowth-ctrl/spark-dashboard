@@ -1,6 +1,13 @@
 <script>
   import MemoryStats from './components/MemoryStats.svelte';
   import ThermalStats from './components/ThermalStats.svelte';
+  import ComputeStats from './components/ComputeStats.svelte';
+  import { lastUpdated } from './lib/lastUpdated.js';
+
+  function formatTime(ms) {
+    if (!ms) return 'waiting for data…';
+    return new Date(ms).toLocaleTimeString();
+  }
 </script>
 
 <div class="container">
@@ -12,7 +19,12 @@
   <main>
     <MemoryStats />
     <ThermalStats />
+    <ComputeStats />
   </main>
+
+  <footer class="trailer">
+    <span class="updated" data-lastupdated={$lastUpdated}>Updated {formatTime($lastUpdated)}</span>
+  </footer>
 </div>
 
 <style>
@@ -37,5 +49,15 @@
   }
   main > * + * {
     margin-top: 1.5rem;
+  }
+  .trailer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #222;
+    text-align: center;
+  }
+  .updated {
+    font-size: 0.75rem;
+    color: #666;
   }
 </style>

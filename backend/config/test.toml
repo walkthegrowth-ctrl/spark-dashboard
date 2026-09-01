@@ -19,3 +19,9 @@ collection_interval_secs = 1
 
 [memory]
 collection_interval_secs = 1
+
+[compute]
+collection_interval_secs = 1
+
+[power]
+collection_interval_secs = 1

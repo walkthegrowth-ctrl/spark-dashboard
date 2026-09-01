@@ -3,3 +3,4 @@ pub mod server;
 pub mod db;
 pub mod ipc;
 pub mod config;
+pub mod lock;

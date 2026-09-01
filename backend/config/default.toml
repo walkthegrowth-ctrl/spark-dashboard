@@ -15,7 +15,13 @@ wal_mode = true
 retention_days = 7
 
 [thermal]
-collection_interval_secs = 30
+collection_interval_secs = 5
 
 [memory]
-collection_interval_secs = 60
+collection_interval_secs = 5
+
+[compute]
+collection_interval_secs = 5
+
+[power]
+collection_interval_secs = 5
