@@ -32,7 +32,13 @@ fn main() {
     let cfg = if let Some(cp) = config_path {
         config::load_config(cp)
     } else {
-        config::load_config("config/default.toml")
+        // `SPARK_CONFIG_PATH` keeps both binaries consistent (see collect.rs);
+        // the `--config` flag above still wins over the environment variable.
+        config::load_config(
+            std::env::var("SPARK_CONFIG_PATH")
+                .as_deref()
+                .unwrap_or("config/default.toml"),
+        )
     };
 
     // Enforce "one server per database" via a cross-process `flock` on a file in
