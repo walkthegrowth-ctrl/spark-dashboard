@@ -30,3 +30,9 @@ backend/static/
 
 # Build artifacts
 backend/target/
+
+# Release bundle output (tools/make-bundle.sh)
+dist/
+
+# Debug screenshots (local only)
+tools/screenshot*.png
