@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About · Spark Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid #333;
+    }
+    .back {
+      display: inline-block;
+      font-size: 0.8rem;
+      color: #888;
+      text-decoration: none;
+      margin-bottom: 1rem;
+      transition: color 0.15s ease;
+    }
+    .back:hover { color: #c7d2fe; }
+    h1 { font-size: 1.75rem; font-weight: 600; color: #fff; }
+    .subtitle { font-size: 0.9rem; color: #888; margin-top: 0.4rem; }
+    section {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 1.5rem;
+    }
+    section h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+    section p { margin-bottom: 0.75rem; color: #ccc; font-size: 0.925rem; }
+    section p:last-child { margin-bottom: 0; }
+    ul { list-style: none; margin: 0.25rem 0 0.5rem; }
+    ul li { margin-bottom: 0.5rem; font-size: 0.925rem; color: #ccc; }
+    ul li ::marker { color: #3b82f6; }
+    .kpi { color: #c7d2fe; font-weight: 500; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85em;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      color: #e5e7eb;
+    }
+    .deps { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; }
+    .dep {
+      background: #0a0a0a;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 0.6rem 0.75rem;
+    }
+    .dep .name { font-weight: 500; color: #e0e0e0; font-size: 0.9rem; }
+    .dep .lic { font-size: 0.75rem; color: #888; margin-top: 0.25rem; }
+    .dep .role { font-size: 0.75rem; color: #9aa0a6; margin-top: 0.15rem; }
+    .note { font-size: 0.8rem; color: #777; margin-top: 0.75rem; }
+    .muted { color: #666; }
+    a { color: #93c5fd; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .license-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #22c55e;
+      border: 1px solid #2a2a2a;
+      background: #0a0a0a;
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <!-- Back link: this page was opened from the dashboard's footer via
+           window.open(), so it is a script-opened tab and may safely
+           window.close(). That closes this tab and restores focus to the
+           original dashboard tab — which keeps its time-dynamics session
+           going (an in-tab navigation to '/' would instead reset the charts).
+           If window.close() is refused (e.g. the page was opened outside a
+           user-initiated popup), we fall back to navigating in place.
+           The href='/' remains as a no-JS / popup-block fallback. -->
+      <a
+        class="back"
+        href="/"
+        onclick="event.preventDefault(); window.close(); setTimeout(function(){ if (!window.closed) window.location.href='/'; }, 150); return false;"
+      >← Back to dashboard</a>
+      <h1>Spark Dashboard</h1>
+      <p class="subtitle">Lightweight hardware monitoring for the NVIDIA DGX Spark (GB10).</p>
+    </header>
+
+    <section>
+      <h2>What this is</h2>
+      <p>
+        Spark Dashboard is a self-hosted hardware monitoring panel aimed at the
+        <span class="kpi">NVIDIA DGX Spark (GB10)</span> and similar hardware. It
+        is deliberately a more useful alternative to the bundled dashboards:
+        it prioritizes <strong>thermal visibility and history</strong>,
+        <strong>accurate unified-memory reporting</strong>, and per-core
+        CPU / GPU load, with a clean, low-noise layout.
+      </p>
+      <p>
+        Data is collected on the Spark by a <code>spark-collect</code>
+        daemon that samples hardware metrics and persists them to a local
+        SQLite database. A separate <code>spark-serve</code> process exposes a
+        small REST API and serves this frontend as static assets. The browser
+        polls the API (REST + polling, not WebSocket streaming) and renders
+        the charts client-side, so the Spark side stays quiet when no one is
+        looking.
+      </p>
+      <p>
+        The result is designed to be a single, installable binary with zero
+        or minimal configuration: run it, open the browser, and the machine
+        tells you what its thermals, memory, and compute look like — with a
+        short history you can scroll back through.
+      </p>
+    </section>
+
+    <section>
+      <h2>Creator &amp; technologies</h2>
+      <p>
+        This dashboard is built by
+        <strong>Embracing Challenges</strong>
+        (<a href="https://x.com/walkthegrowth" target="_blank" rel="noopener noreferrer">@walkthegrowth</a>),
+        a hands-on local-AI tinkerer. It&rsquo;s closer to the monitor I wanted
+        on my own desk: clearer thermal and power visibility, with memory and
+        compute stats, and including a link back to NVIDIA&rsquo;s dashboard
+        to access the official tools.
+      </p>
+      <p>
+        If you run a Spark or a GB10 OEM box and care about owning the stack
+        instead of renting it, follow the work and the next releases on X at
+        <a href="https://x.com/intent/follow?screen_name=walkthegrowth"
+           target="_blank" rel="noopener noreferrer">@walkthegrowth</a>.
+      </p>
+      <p>The software is intentionally small — two Rust binaries, one Svelte frontend, and a SQLite database:</p>
+      <ul>
+        <li><span class="kpi">Backend</span> — Rust (Rust 2021). <code>spark-collect</code> samples hardware (meminfo, thermal zones, CPU, GPU, power) on a timer; <code>spark-serve</code> is a tiny HTTP server (tiny_http) that reads the SQLite DB and answers requests.</li>
+        <li><span class="kpi">Storage</span> — SQLite (WAL mode) for history; the collector writes, the server reads, and both can run concurrently without locks.</li>
+        <li><span class="kpi">Frontend</span> — Svelte 4 + Vite. The chart library is a single file <code>Sparkline.svelte</code> — no external chart deps.</li>
+        <li><span class="kpi">Build</span> — <code>cargo build</code> for the backend, <code>npm run build</code> for the frontend. Both are wired into <code>./run.sh</code>.</li>
+        <li><span class="kpi">Hardware</span> — NVIDIA DGX Spark (GB10), aarch64, unified coherent memory. All sensors are read through the standard Linux <code>/proc</code> and <code>/sys</code> interfaces plus <code>nvidia-smi</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Licensing <span class="license-badge">MIT</span></h2>
+      <p>
+        Spark Dashboard is distributed under the <strong>MIT License</strong>
+        (Copyright (c) 2026 Embracing Challenges (@walkthegrowth)). You are free to use, copy,
+        modify, merge, publish, distribute, and sublicense copies, subject to the
+        license terms in the <code>./LICENSE</code> file at the repository
+        root.
+      </p>
+      <p>
+        The project links against a number of third-party libraries. All of
+        them ship under permissive or open licenses; the exact versions are
+        pinned in <code>backend/Cargo.lock</code> and
+        <code>frontend/package-lock.json</code>.
+      </p>
+      <h2 style="font-size:1rem; color:#bbb; margin-top:1rem;">Backend (Rust)</h2>
+      <div class="deps">
+        <div class="dep"><div class="name">chrono</div><div class="role">time &amp; dates</div><div class="lic">MIT / Apache-2.0</div></div>
+        <div class="dep"><div class="name">rusqlite</div><div class="role">SQLite binding</div><div class="lic">MIT / Apache-2.0</div></div>
+        <div class="dep"><div class="name">serde &amp; serde_json</div><div class="role">(de)serialization</div><div class="lic">MIT / Apache-2.0</div></div>
+        <div class="dep"><div class="name">signal-hook</div><div class="role">signal handling</div><div class="lic">MIT</div></div>
+        <div class="dep"><div class="name">smallvec</div><div class="role">stack-friendly vec</div><div class="lic">MIT / Apache-2.0</div></div>
+        <div class="dep"><div class="name">libc</div><div class="role">C FFI</div><div class="lic">MIT</div></div>
+        <div class="dep"><div class="name">tiny_http</div><div class="role">HTTP server</div><div class="lic">MIT</div></div>
+      </div>
+      <h2 style="font-size:1rem; color:#bbb; margin-top:1rem;">Frontend (JS)</h2>
+      <div class="deps">
+        <div class="dep"><div class="name">Svelte</div><div class="role">UI framework</div><div class="lic">MIT</div></div>
+        <div class="dep"><div class="name">Vite</div><div class="role">build tool</div><div class="lic">MIT</div></div>
+        <div class="dep"><div class="name">@sveltejs/vite-plugin-svelte</div><div class="role">Svelte ↔ Vite integration</div><div class="lic">MIT</div></div>
+        <div class="dep"><div class="name">Playwright</div><div class="role">e2e / verification</div><div class="lic">Apache-2.0</div></div>
+      </div>
+      <p class="note">
+        In addition, the runtime environment provides <strong>SQLite 3</strong>
+        (BSD-style public-domain license) through the
+        <code>rusqlite/bundled</code> feature, and <strong>nvidia-smi</strong>
+        (NVIDIA proprietary CLI) is invoked only to read GPU metrics.
+      </p>
+    </section>
+
+    <p class="note muted" style="margin-top:1.5rem; text-align: center;">
+      Spark Dashboard · MIT License · built for the NVIDIA DGX Spark (GB10)
+    </p>
+  </div>
+</body>
+</html>

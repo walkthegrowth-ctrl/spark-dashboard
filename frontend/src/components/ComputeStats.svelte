@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import CollapsibleCard from './CollapsibleCard.svelte';
+  import CollapsibleSection from './CollapsibleSection.svelte';
   import StatusBar from './StatusBar.svelte';
   import Sparkline from './Sparkline.svelte';
   import { touch } from '../lib/lastUpdated.js';
@@ -8,7 +9,17 @@
   let compute = null;
   let loading = true;
   let error = null;
-  let collapsed = false; // expanded by default
+  // All cards start fully collapsed (topmost info level) — see MemoryStats.
+  let collapsed = true; // collapsed by default
+  let graphsOpen = false; // the "Time dynamics" section is collapsed by default
+
+  function onCardToggle() {
+    collapsed = !collapsed;
+    graphsOpen = false; // top toggle resets the section state (no memory)
+  }
+  function onGraphsToggle() {
+    graphsOpen = !graphsOpen;
+  }
 
   // In-memory session history for the two utilization series, one sample per
   // refresh (1 s), capped. Both are 0–100 %, so the chart ceiling is 100.
@@ -189,7 +200,7 @@
 <CollapsibleCard
   title="Compute Load"
   {collapsed}
-  on:toggle={() => (collapsed = !collapsed)}
+  on:toggle={onCardToggle}
 >
   <svelte:fragment slot="summary">
     {#if compute}
@@ -222,25 +233,25 @@
         <span class="value" style="color: {utilizationColor(cpuTotal)}">{formatPct(cpuTotal)}</span>
         <span class="status">{utilizationLabel(cpuTotal)}</span>
       </div>
-      <div class="metric" data-tooltip="CPU load, 1-min run-queue average normalized to % of the maximum total load (100% = every core fully busy).">
+      <div class="metric" data-tooltip="CPU load, 1-min run-queue average">
         <span class="label">1m</span>
-        <span class="value">{loadPct(compute.load_1_pct)}</span>
-        <span class="status">% of max</span>
+        <span class="value" style="color: {utilizationColor(compute.load_1_pct)}">{loadPct(compute.load_1_pct)}</span>
+        <span class="status">{utilizationLabel(compute.load_1_pct)}</span>
       </div>
-      <div class="metric" data-tooltip="CPU load, 5-min run-queue average normalized to % of the maximum total load (100% = every core fully busy).">
+      <div class="metric" data-tooltip="CPU load, 5-min run-queue average">
         <span class="label">5m</span>
-        <span class="value">{loadPct(compute.load_5_pct)}</span>
-        <span class="status">% of max</span>
+        <span class="value" style="color: {utilizationColor(compute.load_5_pct)}">{loadPct(compute.load_5_pct)}</span>
+        <span class="status">{utilizationLabel(compute.load_5_pct)}</span>
       </div>
-      <div class="metric" data-tooltip="CPU load, 15-min run-queue average normalized to % of the maximum total load (100% = every core fully busy).">
+      <div class="metric" data-tooltip="CPU load, 15-min run-queue average">
         <span class="label">15m</span>
-        <span class="value">{loadPct(compute.load_15_pct)}</span>
-        <span class="status">% of max</span>
+        <span class="value" style="color: {utilizationColor(compute.load_15_pct)}">{loadPct(compute.load_15_pct)}</span>
+        <span class="status">{utilizationLabel(compute.load_15_pct)}</span>
       </div>
-      <div class="metric" data-tooltip="CPU load over the last hour, derived from the history of 1-min run-queue averages (the kernel has no 60-min average), normalized to % of max.">
+      <div class="metric" data-tooltip="CPU load over the last hour (from 1-min averages)">
         <span class="label">60m</span>
-        <span class="value">{loadPct(compute.load_60_pct)}</span>
-        <span class="status">% of max</span>
+        <span class="value" style="color: {utilizationColor(compute.load_60_pct)}">{loadPct(compute.load_60_pct)}</span>
+        <span class="status">{utilizationLabel(compute.load_60_pct)}</span>
       </div>
 
       <div class="row-label gpu">GPU</div>
@@ -251,47 +262,50 @@
         </span>
         <span class="status">{utilizationLabel(compute.gpu_utilization_pct)}</span>
       </div>
-      <div class="metric" data-tooltip="GPU load, 1-min rolling average of GPU utilization (nvidia-smi). The platform exposes no GPU run-queue, so this is the utilization-based analogue of load.">
+      <div class="metric" data-tooltip="GPU load, 1-min rolling average">
         <span class="label">1m</span>
-        <span class="value">{loadPct(compute.gpu_load_1)}</span>
-        <span class="status">% of full</span>
+        <span class="value" style="color: {utilizationColor(compute.gpu_load_1)}">{loadPct(compute.gpu_load_1)}</span>
+        <span class="status">{utilizationLabel(compute.gpu_load_1)}</span>
       </div>
-      <div class="metric" data-tooltip="GPU load, 5-min rolling average of GPU utilization (nvidia-smi). The platform exposes no GPU run-queue, so this is the utilization-based analogue of load.">
+      <div class="metric" data-tooltip="GPU load, 5-min rolling average">
         <span class="label">5m</span>
-        <span class="value">{loadPct(compute.gpu_load_5)}</span>
-        <span class="status">% of full</span>
+        <span class="value" style="color: {utilizationColor(compute.gpu_load_5)}">{loadPct(compute.gpu_load_5)}</span>
+        <span class="status">{utilizationLabel(compute.gpu_load_5)}</span>
       </div>
-      <div class="metric" data-tooltip="GPU load, 15-min rolling average of GPU utilization (nvidia-smi). The platform exposes no GPU run-queue, so this is the utilization-based analogue of load.">
+      <div class="metric" data-tooltip="GPU load, 15-min rolling average">
         <span class="label">15m</span>
-        <span class="value">{loadPct(compute.gpu_load_15)}</span>
-        <span class="status">% of full</span>
+        <span class="value" style="color: {utilizationColor(compute.gpu_load_15)}">{loadPct(compute.gpu_load_15)}</span>
+        <span class="status">{utilizationLabel(compute.gpu_load_15)}</span>
       </div>
-      <div class="metric" data-tooltip="GPU load over the last hour, a rolling average of GPU utilization samples (nvidia-smi). The platform exposes no GPU run-queue, so this is the utilization-based analogue of load.">
+      <div class="metric" data-tooltip="GPU load over the last hour (rolling average)">
         <span class="label">60m</span>
-        <span class="value">{loadPct(compute.gpu_load_60)}</span>
-        <span class="status">% of full</span>
+        <span class="value" style="color: {utilizationColor(compute.gpu_load_60)}">{loadPct(compute.gpu_load_60)}</span>
+        <span class="status">{utilizationLabel(compute.gpu_load_60)}</span>
       </div>
     </div>
 
-    <StatusBar label="CPU utilization" value={Math.min(cpuAvg ?? 0, 100)} color={cpuBarColor} display={formatPct(cpuAvg)} tooltip="Mean of all CPU core utilization." />
+    <StatusBar label="CPU utilization" value={Math.min(cpuAvg ?? 0, 100)} color={cpuBarColor} display={formatPct(cpuAvg)} tooltip="Global CPUs utilization · all cores combined" />
     <StatusBar label="GPU utilization" value={Math.min(compute.gpu_utilization_pct ?? 0, 100)} color={gpuBarColor} display={formatPct(compute.gpu_utilization_pct)} tooltip="GPU utilization reported by nvidia-smi." />
 
-    <div class="history">
-      <div class="history-label">
-        Time dynamics
-        <span class="hint">since this page opened · fixed scale 0 → 100 %</span>
-      </div>
-      <div class="charts">
-        <Sparkline label="CPU utilization" color="#38bdf8" values={cpuUtilArr} timestamps={computeTimes} max={100} format={fmtPct} />
-        <Sparkline label="GPU utilization" color="#a78bfa" values={gpuUtilArr} timestamps={computeTimes} max={100} format={fmtPct} />
-      </div>
+    <div class="dynamics">
+      <CollapsibleSection
+        title="Time dynamics"
+        hint="since this page opened · using fixed scales"
+        open={graphsOpen}
+        on:toggle={onGraphsToggle}
+      >
+        <div class="charts">
+          <Sparkline label="CPU utilization" color="#38bdf8" values={cpuUtilArr} timestamps={computeTimes} max={100} format={fmtPct} />
+          <Sparkline label="GPU utilization" color="#a78bfa" values={gpuUtilArr} timestamps={computeTimes} max={100} format={fmtPct} />
+        </div>
+      </CollapsibleSection>
     </div>
 
     <div class="radars">
       {#if cpuDots.length}
         <div class="radar-block">
-          <div class="group-label" data-tooltip="Spokes ordered by load, highest first (not by core number), to make load surfaces easier to read.">
-            CPU cores*
+          <div class="group-label" data-tooltip="Cores ordered by load, highest first.">
+            CPU cores
           </div>
           <svg viewBox="0 0 400 400" class="radar" role="img" aria-label="Per-core CPU utilization radar chart">
             {#each cpuRings as path}
@@ -321,8 +335,8 @@
       {/if}
 
       <div class="radar-block">
-        <div class="group-label" data-tooltip="All 48 spokes reflect the global GPU core utilization reported by nvidia-smi. NVIDIA GB10 exposes a single aggregate GPU metric.">
-          GPU SMs*
+        <div class="group-label" data-tooltip="From global metric as reported by nvidia-smi.">
+          GPU SMs
         </div>
         <svg viewBox="0 0 400 400" class="radar radar-gpu" role="img" aria-label="GPU utilization radar (48 spokes, all at the global GPU load level)">
           {#each gpuRings as path}
@@ -477,26 +491,10 @@
     font-size: 8px;
     fill: #666;
   }
-  .history {
+  .dynamics {
     margin-top: 1.75rem;
     border-top: 1px solid #222;
     padding-top: 1rem;
-  }
-  .history-label {
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #bbb;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.75rem;
-  }
-  .history-label .hint {
-    font-size: 0.68rem;
-    font-weight: 400;
-    color: #666;
-    letter-spacing: 0;
   }
   .charts {
     display: grid;

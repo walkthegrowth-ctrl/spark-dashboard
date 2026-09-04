@@ -10,6 +10,10 @@
   export let max = null;
   export let format = (v) => `${v}`;
   export let color = '#38bdf8';
+  // Optional override for the left footer label ("Max: xxx"). Defaults to
+  // `format(scale_.max)` when not provided. Used by the Memory card to show
+  // "Max: NA" for the swap-free chart when the machine has no swap.
+  export let maxLabel = null;
 
   // Unit-space viewBox [0..1]; preserveAspectRatio="none" stretches the path to
   // the container. vector-effect keeps strokes crisp regardless of that stretch.
@@ -38,6 +42,26 @@
   })();
 
   $: current = values.length ? values[values.length - 1] : null;
+
+  // Recording time = span of the in-memory history (newest sample − oldest).
+  // Shown bottom-right as "Rec time: H:MM:SS".
+  $: recMs = (timestamps.length >= 2)
+    ? Math.max(0, timestamps[timestamps.length - 1] - timestamps[0])
+    : 0;
+  function fmtDuration(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const p = (n) => String(n).padStart(2, '0');
+    return `${h}:${p(m)}:${p(s)}`;
+  }
+
+  // Left footer label: "Max: <axis max>". Callers can override with
+  // `maxLabel` (e.g. the Memory card shows "NA" for swap-free when the
+  // machine has no swap, but still plots against a 1 GB scale). `scale_`
+  // is null until the first sample arrives, so guard it.
+  $: leftMaxLabel = maxLabel !== null ? maxLabel : (scale_ ? `Max: ${format(scale_.max)}` : 'Max: —');
 
   let container = null;
   let hover = null; // { i, px, py, value }
@@ -91,8 +115,8 @@
     </div>
 
     <div class="range">
-      <span>{format(scale_.min)}</span>
-      <span>{format(scale_.max)}</span>
+      <span>{leftMaxLabel}</span>
+      <span>Rec time: {fmtDuration(recMs)}</span>
     </div>
   </div>
 {/if}

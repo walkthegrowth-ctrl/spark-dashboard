@@ -4,6 +4,8 @@ Lightweight monitoring dashboard for the NVIDIA DGX Spark (GB10) and compatible 
 
 Designed as a more useful alternative to the official NVIDIA DGX Dashboard, with a strong focus on thermal visibility and history, accurate unified-memory reporting, and first-class support for common LLM serving engines.
 
+Built by **Embracing Challenges** ([@walkthegrowth](https://x.com/walkthegrowth)).
+
 ## Architecture
 
 One Rust crate, two binaries:
@@ -32,7 +34,21 @@ If the collector is down, `GET /api/<stream>/current` transparently falls back t
 
 ## Quick Start
 
+### Install (aarch64-linux / DGX Spark)
+
+```bash
+curl -fsSL https://github.com/walkthegrowth-ctrl/spark-dashboard/releases/latest/download/install.sh | sh
+~/.spark/spark.sh start            # dashboard on http://localhost:8090
+```
+
+Other options: `spark.sh start <PORT>` · `spark.sh status` · `spark.sh stop` · `spark.sh logs`.
+The installer never starts anything itself; it only downloads, verifies (sha256), and extracts to `~/.spark`.
+
+### Developers (build from source)
+
 Easiest: `./run.sh` — builds backend + frontend, starts both processes on port 8090 (options: `--port`, `--config`). Ctrl-C shuts both down.
+
+Make a release bundle: `tools/make-bundle.sh` (add `--release --version vX.Y.Z` with a `GH_TOKEN` to publish).
 
 Manually:
 

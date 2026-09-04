@@ -172,6 +172,19 @@ fn serve_request(mut request: Request, db_path: &str, ipc_socket: &str) {
                 "text/plain".to_string(),
             )
         }
+    } else if url == "/about" || url == "/about/" || url == "/about.html" {
+        // Static "about / licensing" page, shipped from frontend/public →
+        // copies to backend/static/about.html at build time.
+        let about_path = format!("{}/about.html", static_dir());
+        if let Some(content) = fs::read_to_string(&about_path).ok() {
+            (StatusCode(200), content, "text/html; charset=utf-8".to_string())
+        } else {
+            (
+                StatusCode(404),
+                "about.html not found (run: cd frontend && npm run build)".to_string(),
+                "text/plain".to_string(),
+            )
+        }
     } else {
         (StatusCode(404), "Not Found".to_string(), "text/plain".to_string())
     };

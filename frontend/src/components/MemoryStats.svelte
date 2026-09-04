@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import CollapsibleCard from './CollapsibleCard.svelte';
+  import CollapsibleSection from './CollapsibleSection.svelte';
   import StatusBar from './StatusBar.svelte';
   import Sparkline from './Sparkline.svelte';
   import { touch } from '../lib/lastUpdated.js';
@@ -8,7 +9,22 @@
   let memory = null;
   let loading = true;
   let error = null;
-  let collapsed = false; // expanded by default
+  // All cards start fully collapsed (showing only the summary indicator) so
+  // the dashboard opens at the highest information level. Expand via the
+  // top-right chevron.
+  let collapsed = true; // collapsed by default
+  let graphsOpen = false; // the "Time dynamics" graphs section is collapsed by default
+
+  function onCardToggle() {
+    collapsed = !collapsed;
+    // Per spec: clicking the top toggle resets the section state. Every time
+    // the user collapses or expands the card, the graphs section goes back to
+    // its default (closed).
+    graphsOpen = false;
+  }
+  function onGraphsToggle() {
+    graphsOpen = !graphsOpen;
+  }
 
   // In-memory history for the current session: one sample per refresh (1 s),
   // oldest → newest, capped so a long-lived tab stays bounded. Each is a top-level
@@ -78,6 +94,17 @@
 
   $: inUseDisplay = usagePct === 0 && memory ? '0%' : `${usagePct}%`;
 
+  // Some machines have no swap: the kernel reports SwapTotal=0 (and
+  // SwapFree=0). We treat a 0/null total as "swap absent" so the UI can
+  // say "None" / "0" cleanly, and the swap-free chart keeps plotting with a
+  // 1 GB axis (values stay 0, but the chart stays a proper line graph).
+  const FALLBACK_SWAP_AXIS = 1024 * 1024 * 1024; // 1 GB
+  $: hasSwap = !!(memory && memory.swap_total_bytes && memory.swap_total_bytes > 0);
+  $: swapTotalDisplay = hasSwap ? fmt(memory.swap_total_bytes) : 'None';
+  $: swapFreeDisplay = hasSwap ? fmt(memory.swap_free_bytes) : '0';
+  $: swapFreeAxisMax = hasSwap ? memory.swap_total_bytes : FALLBACK_SWAP_AXIS;
+  $: swapFreeMaxLabel = hasSwap ? null : 'Max: NA';
+
   function fmt(bytes) {
     if (bytes === null || bytes === undefined) return 'N/A';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -97,7 +124,7 @@
 <CollapsibleCard
   title="Memory"
   {collapsed}
-  on:toggle={() => (collapsed = !collapsed)}
+  on:toggle={onCardToggle}
 >
   <svelte:fragment slot="summary">
     {#if memory}
@@ -143,11 +170,11 @@
       </div>
       <div class="stat">
         <span class="label">Swap Total</span>
-        <span class="value">{memory.swap_total_bytes === null ? 'N/A' : fmt(memory.swap_total_bytes)}</span>
+        <span class="value">{swapTotalDisplay}</span>
       </div>
       <div class="stat">
         <span class="label">Swap Free</span>
-        <span class="value">{memory.swap_free_bytes === null ? 'N/A' : fmt(memory.swap_free_bytes)}</span>
+        <span class="value">{swapFreeDisplay}</span>
       </div>
     </div>
 
@@ -159,16 +186,22 @@
       tooltip="Share of total RAM in use (total − available)."
     />
 
-    <div class="history">
-      <div class="group-label">Time dynamics <span class="hint">since this page opened · fixed scale 0 → total (swap-free: 0 → total swap)</span></div>
-      <div class="charts">
-        <Sparkline label="In Use" color="#ef4444" values={inUseArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
-        <Sparkline label="Available" color="#22c55e" values={availableArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
-        <Sparkline label="Free" color="#38bdf8" values={freeArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
-        <Sparkline label="Buffers" color="#a78bfa" values={buffersArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
-        <Sparkline label="Cached" color="#eab308" values={cachedArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
-        <Sparkline label="Swap Free" color="#94a3b8" values={swapFreeArr} timestamps={timesArr} max={memory.swap_total_bytes} format={fmt} />
-      </div>
+    <div class="dynamics">
+      <CollapsibleSection
+        title="Time dynamics"
+        hint="since this page opened · using fixed scales"
+        open={graphsOpen}
+        on:toggle={onGraphsToggle}
+      >
+        <div class="charts">
+          <Sparkline label="In Use" color="#ef4444" values={inUseArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
+          <Sparkline label="Available" color="#22c55e" values={availableArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
+          <Sparkline label="Free" color="#38bdf8" values={freeArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
+          <Sparkline label="Buffers" color="#a78bfa" values={buffersArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
+          <Sparkline label="Cached" color="#eab308" values={cachedArr} timestamps={timesArr} max={memory.mem_total_bytes} format={fmt} />
+          <Sparkline label="Swap Free" color="#94a3b8" values={swapFreeArr} timestamps={timesArr} max={swapFreeAxisMax} maxLabel={swapFreeMaxLabel} format={fmt} />
+        </div>
+      </CollapsibleSection>
     </div>
   {/if}
 </CollapsibleCard>
@@ -199,22 +232,10 @@
     color: #e0e0e0;
     font-variant-numeric: tabular-nums;
   }
-  .history { margin-top: 1.75rem; }
-  .group-label {
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #bbb;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.75rem;
-  }
-  .group-label .hint {
-    font-size: 0.68rem;
-    font-weight: 400;
-    color: #666;
-    letter-spacing: 0;
+  .dynamics {
+    margin-top: 1.75rem;
+    border-top: 1px solid #222;
+    padding-top: 1rem;
   }
   .charts {
     display: grid;

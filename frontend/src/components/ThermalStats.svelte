@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import CollapsibleCard from './CollapsibleCard.svelte';
+  import CollapsibleSection from './CollapsibleSection.svelte';
   import StatusBar from './StatusBar.svelte';
   import Sparkline from './Sparkline.svelte';
   import { touch } from '../lib/lastUpdated.js';
@@ -9,7 +10,17 @@
   let power = null;
   let loading = true;
   let error = null;
-  let collapsed = false; // expanded by default
+  // All cards start fully collapsed (topmost info level) — see MemoryStats.
+  let collapsed = true; // collapsed by default
+  let graphsOpen = false; // the "Time dynamics" section is collapsed by default
+
+  function onCardToggle() {
+    collapsed = !collapsed;
+    graphsOpen = false; // top toggle resets the section state (no memory)
+  }
+  function onGraphsToggle() {
+    graphsOpen = !graphsOpen;
+  }
 
   // In-memory session history for the two "status" metrics shown in the bars:
   // the hottest sensor temperature, and power draw. One sample per refresh (1 s),
@@ -79,9 +90,10 @@
   function powerColor(data) {
     const w = data && data.power_w;
     if (w === null || w === undefined) return '#888';
+    // Ceiling is 120 W (GB10 package max draw), so the top band is 110–120.
     if (w < 80) return '#22c55e';
     if (w < 110) return '#eab308';
-    if (w < 130) return '#f97316';
+    if (w < 120) return '#f97316';
     return '#ef4444';
   }
 
@@ -90,7 +102,7 @@
     if (w === null || w === undefined) return 'Unknown';
     if (w < 80) return 'Normal';
     if (w < 110) return 'Elevated';
-    if (w < 130) return 'High';
+    if (w < 120) return 'High';
     return 'Peak';
   }
 
@@ -237,15 +249,15 @@
   $: hottestColor = hottest.sensor ? sensorColor(hottest.sensor) : null;
   $: hottestDisplay = hottest.temp !== null ? `${hottest.temp.toFixed(1)} °C` : 'N/A';
 
-  // Power fill scales against a 150 W ceiling (GB10 peak headroom); the value
-  // itself is what matters, colour is a convenience.
-  $: powerFill = power && power.power_w !== null ? (power.power_w / 150) * 100 : 0;
-  $: powerTooltip = power && power.source ? `nvidia-smi power.draw — unified GB10 package (GPU + ARM + memory)` : 'nvidia-smi power.draw';
-
   // Fixed chart ceilings — the natural top of each axis, so history reads
   // against a stable reference (not auto-zoomed).
   const TEMP_MAX = 100; // °C — covers GB10 throttling (~95 °C) with headroom
-  const POWER_MAX = 150; // W — GB10 peak headroom
+  const POWER_MAX = 120; // W — GB10 package max draw (power bar + chart ceiling)
+
+  // Power fill scales against the 120 W ceiling; the value itself is what
+  // matters, colour is a convenience.
+  $: powerFill = power && power.power_w !== null ? (power.power_w / POWER_MAX) * 100 : 0;
+  $: powerTooltip = 'Bar length as % of max GPU draw (120 W) as reported by nvidia-smi power.draw';
 
   function hottestOf(list) {
     let best = null;
@@ -277,7 +289,7 @@
   }
   function fmtW(v) {
     if (v === null || v === undefined) return 'N/A';
-    const isCeiling = Number.isInteger(v); // fixed 0 and 150 → round
+    const isCeiling = Number.isInteger(v); // fixed 0 and 120 → round
     return `${isCeiling ? v : v.toFixed(1)} W`;
   }
 
@@ -295,7 +307,7 @@
 <CollapsibleCard
   title="Thermal and Power"
   {collapsed}
-  on:toggle={() => (collapsed = !collapsed)}
+  on:toggle={onCardToggle}
 >
   <svelte:fragment slot="summary">
     <StatusBar
@@ -335,8 +347,8 @@
             </div>
           {/each}
           <div class="stat-spacer" aria-hidden="true"></div>
-          <div class="stat stat-power" data-tooltip="nvidia-smi power.draw — unified GB10 package (GPU + ARM + memory)" style="border-color: {powerColorValue}">
-            <span class="label">Power</span>
+          <div class="stat stat-power" data-tooltip="as reported by nvidia-smi power.draw" style="border-color: {powerColorValue}">
+            <span class="label">GPU Power</span>
             <span class="value" style="color: {powerColorValue}">{formatPower(power)}</span>
             <span class="status" style="color: {powerColorValue}">{powerStatus(power)}</span>
           </div>
@@ -393,15 +405,18 @@
       />
     </div>
 
-    <div class="history">
-      <div class="group-label">
-        Time dynamics
-        <span class="hint">since this page opened · fixed scale (0 → 100 °C, 0 → 150 W)</span>
-      </div>
-      <div class="charts">
-        <Sparkline label="Hottest" color="#f97316" values={hottestArr} timestamps={thermalTimes} max={TEMP_MAX} format={fmtTemp} />
-        <Sparkline label="Power" color="#38bdf8" values={powerArr} timestamps={powerTimes} max={POWER_MAX} format={fmtW} />
-      </div>
+    <div class="dynamics">
+      <CollapsibleSection
+        title="Time dynamics"
+        hint="since this page opened · using fixed scales"
+        open={graphsOpen}
+        on:toggle={onGraphsToggle}
+      >
+        <div class="charts">
+          <Sparkline label="Hottest" color="#f97316" values={hottestArr} timestamps={thermalTimes} max={TEMP_MAX} format={fmtTemp} />
+          <Sparkline label="GPU Power" color="#38bdf8" values={powerArr} timestamps={powerTimes} max={POWER_MAX} format={fmtW} />
+        </div>
+      </CollapsibleSection>
     </div>
   {/if}
 </CollapsibleCard>
@@ -493,27 +508,10 @@
     border-top: 1px solid #222;
     padding-top: 1rem;
   }
-  .history {
+  .dynamics {
     margin-top: 1.75rem;
     border-top: 1px solid #222;
     padding-top: 1rem;
-  }
-  .history .group-label {
-    display: flex;
-    gap: 0.75rem;
-    align-items: baseline;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #bbb;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.75rem;
-    text-transform: none; /* this card's base .group-label is uppercase; opt out here */
-  }
-  .history .hint {
-    font-size: 0.68rem;
-    font-weight: 400;
-    color: #666;
-    letter-spacing: 0;
   }
   .charts {
     display: grid;
