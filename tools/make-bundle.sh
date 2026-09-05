@@ -160,6 +160,19 @@ gh_upload() { # $1 = release_id   $2 = file   $3 = asset name
     --data-binary "@$2" >/dev/null
 }
 
+# If a release with the same tag already exists, delete it first so this
+# run is idempotent (re-releases simply replace the old bundle).
+EXISTING_ID=$(curl -fsSL \
+  -H "$GH_AUTH" -H "Accept: application/vnd.github+json" \
+  "$API/repos/$REPO_OWNER/$REPO_NAME/releases/tags/$TAG" | jq -r '.id // empty')
+if [ -n "$EXISTING_ID" ]; then
+  step "removing existing release ${TAG} (id $EXISTING_ID)"
+  curl -fsSL -X DELETE \
+    -H "$GH_AUTH" -H "Accept: application/vnd.github+json" \
+    "$API/repos/$REPO_OWNER/$REPO_NAME/releases/$EXISTING_ID" >/dev/null
+  ok "old release removed"
+fi
+
 DEFAULT_NOTES="Spark Dashboard ${TAG} — aarch64-linux.
 
 ## Install
