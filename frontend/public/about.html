@@ -114,12 +114,21 @@
     <section>
       <h2>What this is</h2>
       <p>
-        Spark Dashboard is a self-hosted hardware monitoring panel aimed at the
-        <span class="kpi">NVIDIA DGX Spark (GB10)</span> and similar hardware. It
-        is deliberately a more useful alternative to the bundled dashboards:
-        it prioritizes <strong>thermal visibility and history</strong>,
-        <strong>accurate unified-memory reporting</strong>, and per-core
-        CPU / GPU load, with a clean, low-noise layout.
+        Spark Dashboard is a lightweight, self-hosted monitoring panel for the
+        <span class="kpi">NVIDIA DGX Spark (GB10)</span> and similar hardware.
+        It&rsquo;s an early-stage release (MVP) that
+        <strong>complements</strong> the official NVIDIA DGX Dashboard rather
+        than replacing it: thermal visibility and history,
+        MemAvailable-aware memory reporting, per-core CPU and GPU load, and GPU
+        power draw &mdash; in a clean, low-noise layout.
+      </p>
+      <p>
+        It is <strong>read-only and local</strong>: the dashboard reports what
+        the machine is doing; it does not drive it. The operations the
+        official dashboard provides (shutdown, configuration, accounts) stay
+        on the official side, and a few things we plan to add locally are not
+        implemented yet &mdash; machine shutdown/restart controls, LLM engine
+        detection, and Tailscale status.
       </p>
       <p>
         Data is collected on the Spark by a <code>spark-collect</code>
@@ -131,10 +140,11 @@
         looking.
       </p>
       <p>
-        The result is designed to be a single, installable binary with zero
-        or minimal configuration: run it, open the browser, and the machine
-        tells you what its thermals, memory, and compute look like — with a
-        short history you can scroll back through.
+        The install is small and self-contained &mdash; two Rust binaries and a
+        static web page beside them, with sensible defaults: run
+        <code>spark.sh start</code>, open the browser, and the machine tells
+        you what its thermals, memory, and compute look like, with a short
+        history you can scroll back through.
       </p>
     </section>
 
@@ -155,12 +165,12 @@
         <a href="https://x.com/intent/follow?screen_name=walkthegrowth"
            target="_blank" rel="noopener noreferrer">@walkthegrowth</a>.
       </p>
-      <p>The software is intentionally small — two Rust binaries, one Svelte frontend, and a SQLite database:</p>
+      <p>The software is intentionally small — two Rust binaries, one Svelte frontend, and a SQLite database. It was developed with <strong>OpenCode</strong> (an open-source AI coding agent) running <strong>Qwen3.8:27b</strong>, with the design and process led by the author:</p>
       <ul>
         <li><span class="kpi">Backend</span> — Rust (Rust 2021). <code>spark-collect</code> samples hardware (meminfo, thermal zones, CPU, GPU, power) on a timer; <code>spark-serve</code> is a tiny HTTP server (tiny_http) that reads the SQLite DB and answers requests.</li>
         <li><span class="kpi">Storage</span> — SQLite (WAL mode) for history; the collector writes, the server reads, and both can run concurrently without locks.</li>
         <li><span class="kpi">Frontend</span> — Svelte 4 + Vite. The chart library is a single file <code>Sparkline.svelte</code> — no external chart deps.</li>
-        <li><span class="kpi">Build</span> — <code>cargo build</code> for the backend, <code>npm run build</code> for the frontend. Both are wired into <code>./run.sh</code>.</li>
+        <li><span class="kpi">Distribution</span> — Rust backend and Svelte frontend are built separately (<code>cargo</code>, <code>Vite</code>) and shipped as one self-contained bundle, installed with a single <code>curl | sh</code> line and managed with <code>spark.sh</code>.</li>
         <li><span class="kpi">Hardware</span> — NVIDIA DGX Spark (GB10), aarch64, unified coherent memory. All sensors are read through the standard Linux <code>/proc</code> and <code>/sys</code> interfaces plus <code>nvidia-smi</code>.</li>
       </ul>
     </section>
