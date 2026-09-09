@@ -23,6 +23,37 @@
       padding-bottom: 1.25rem;
       border-bottom: 1px solid #333;
     }
+    .head-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .head-row .title { min-width: 0; }
+    h1 { font-size: 1.75rem; font-weight: 600; color: #fff; }
+    .subtitle { font-size: 0.9rem; color: #888; margin-top: 0.4rem; }
+    .follow {
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #c7d2fe;
+      text-decoration: none;
+      white-space: nowrap;
+      border: 1px solid #2a2a2a;
+      background: #111;
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      /* centre the pill on the h1's line box (1.75rem × 1.6 line-height) */
+      margin-top: 0.35rem;
+      transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .follow:hover {
+      color: #e0e7ff;
+      border-color: #3b82f6;
+      background: #151b2b;
+      text-decoration: none;
+    }
+    .follow:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
     .back {
       display: inline-block;
       font-size: 0.8rem;
@@ -32,8 +63,6 @@
       transition: color 0.15s ease;
     }
     .back:hover { color: #c7d2fe; }
-    h1 { font-size: 1.75rem; font-weight: 600; color: #fff; }
-    .subtitle { font-size: 0.9rem; color: #888; margin-top: 0.4rem; }
     section {
       background: #111;
       border: 1px solid #222;
@@ -102,14 +131,24 @@
            If window.close() is refused (e.g. the page was opened outside a
            user-initiated popup), we fall back to navigating in place.
            The href='/' remains as a no-JS / popup-block fallback. -->
-      <a
-        class="back"
-        href="/"
-        onclick="event.preventDefault(); window.close(); setTimeout(function(){ if (!window.closed) window.location.href='/'; }, 150); return false;"
-      >← Back to dashboard</a>
-      <h1>Spark Dashboard</h1>
-      <p class="subtitle">Lightweight hardware monitoring for the NVIDIA DGX Spark (GB10).</p>
-    </header>
+       <a
+         class="back"
+         href="/"
+         onclick="event.preventDefault(); window.close(); setTimeout(function(){ if (!window.closed) window.location.href='/'; }, 150); return false;"
+       >← Back to dashboard</a>
+       <div class="head-row">
+         <div class="title">
+           <h1>Spark Dashboard</h1>
+           <p class="subtitle">Lightweight hardware monitoring for the NVIDIA DGX Spark (GB10).</p>
+         </div>
+         <a
+           class="follow"
+           href="https://x.com/intent/follow?screen_name=walkthegrowth"
+           target="_blank"
+           rel="noopener noreferrer"
+         >Follow @walkthegrowth for information and updates</a>
+       </div>
+     </header>
 
     <section>
       <h2>What this is</h2>
@@ -121,14 +160,6 @@
         than replacing it: thermal visibility and history,
         MemAvailable-aware memory reporting, per-core CPU and GPU load, and GPU
         power draw &mdash; in a clean, low-noise layout.
-      </p>
-      <p>
-        It is <strong>read-only and local</strong>: the dashboard reports what
-        the machine is doing; it does not drive it. The operations the
-        official dashboard provides (shutdown, configuration, accounts) stay
-        on the official side, and a few things we plan to add locally are not
-        implemented yet &mdash; machine shutdown/restart controls, LLM engine
-        detection, and Tailscale status.
       </p>
       <p>
         Data is collected on the Spark by a <code>spark-collect</code>
@@ -146,6 +177,88 @@
         you what its thermals, memory, and compute look like, with a short
         history you can scroll back through.
       </p>
+    </section>
+
+    <section>
+      <h2>Notes and known limitations</h2>
+      <p>
+        Spark Dashboard is a monitoring tool for the author&rsquo;s own machine
+        that is being iterated on in the open. It is early-stage, and some
+        parts are best understood as &ldquo;bright but narrow&rdquo; rather
+        than &ldquo;complete&rdquo;. What this project does <em>not</em> do
+        yet, and what it does only approximately, is listed here deliberately
+        so readers can calibrate before acting on the numbers.
+      </p>
+      <ul>
+        <li>
+          <span class="kpi">Read-only and local</span> &mdash; the dashboard
+          reports what the machine is doing; it does not drive it. Power/reboot
+          stays with the NVIDIA dashboard. Not yet implemented: LLM engine
+          detection, Tailscale status, and remote access (the server binds to
+          <code>127.0.0.1</code> by default and has no authentication).
+        </li>
+        <li>
+          <span class="kpi">Time-box values are small-sample averages</span> &mdash;
+          the <code>5m</code>, <code>15m</code>, <code>60m</code> (and GPU
+          <code>1m</code>/<code>5m</code>/<code>15m</code>/<code>60m</code>)
+          cells are <em>not</em> the load observed over that full window.
+          They are computed as a simple average of whatever samples the
+          database happens to contain in the last 5/15/60 minutes
+          (CPU: the <code>load_1</code> average, normalised by core count;
+          GPU: <code>utilization.gpu</code> samples). Right after install,
+          that can be a handful of samples spanning a few seconds &mdash;
+          so a 60-minute box can show a value that is really a 10-second
+          average. Once the collector has been running long enough that the
+          DB spans the full window, the values are honest.
+        </li>
+        <li>
+          <span class="kpi">Thermal zone names are approximate</span> &mdash;
+          the Linux kernel exposes temperature zones via
+          <code>/sys/class/thermal/thermal_zone*</code> without a stable
+          &ldquo;part identifier&rdquo;. The dashboard labels
+          <code>acpitz</code> zones (SoC/package sensors: TMP461/TMP451
+          remote + Tj) heuristically by matching them against GPU temperature
+          and then <em>freezes</em> that mapping for the collector&rsquo;s
+          lifetime. Under heavy GPU load the hottest core zone can move
+          around, so a specific zone label may swap identity on a
+          reboot, and a zone labelled &ldquo;Composite&rdquo; is not a
+          guarantee of which silicon it actually covers.
+        </li>
+        <li>
+          <span class="kpi">Power is partial</span> &mdash; the
+          &ldquo;Power&rdquo; figure is what <code>nvidia-smi power.draw</code>
+          reports (the GB10 unified package on the GB10 reference board). It
+          is not a wall outlet measurement, does not include the ARM CPU and
+          peripheral rail breakdown, and will show <code>&mdash;</code> when
+          the GPU is not responding or the driver is in a transition state.
+          The 120&nbsp;W ceiling in the bar and chart reflects the
+          power.draw reading, not a hardware cap.
+        </li>
+        <li>
+          <span class="kpi">GPU load is a single number</span> &mdash; only
+          the aggregate <code>utilization.gpu</code> from
+          <code>nvidia-smi</code> is exposed today; the per-SM utilisation
+          that is the interesting signal for LLM workloads is not sampled.
+          The &ldquo;GPU SMs&rdquo; radar simply replicates the global
+          utilisation across 48 spokes to give a visual surface, not 48
+          independent measurements.
+        </li>
+        <li>
+          <span class="kpi">History is capped on purpose</span> &mdash;
+          rows are stored for <code>retention_days</code> (default 7) and
+          trimmed at most once every 6&nbsp;h. On a heavily-loaded box this
+          can be tens of megabytes; on an idle box it is a few megabytes.
+          The in-memory charts in the UI are limited to the last ~1&nbsp;h
+          of samples (3600 at the default 5&nbsp;s interval).
+        </li>
+        <li>
+          <span class="kpi">Local-first assumption</span> &mdash; sampling
+          runs only while both processes are up. No sampling happens offline
+          or on battery backup. On a DGX Spark with the LLM running, CPU
+          utilisation will often read near zero (all the work is happening
+          on the GPU), so watch both cards, not just CPU.
+        </li>
+      </ul>
     </section>
 
     <section>

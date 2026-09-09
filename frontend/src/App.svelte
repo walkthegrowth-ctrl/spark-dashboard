@@ -27,14 +27,6 @@
       <h1>Spark Dashboard</h1>
       <p class="subtitle">NVIDIA DGX Spark Monitoring</p>
     </div>
-    <a
-      class="follow"
-      href="https://x.com/intent/follow?screen_name=walkthegrowth"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Follow @walkthegrowth for information and updates
-    </a>
   </header>
 
   <main>
@@ -48,7 +40,7 @@
       class="trailer-link"
       href="/about"
       on:click={onClickOpenAbout}
-    >What is this and Licensing</a>
+    >Notes and Licensing</a>
     <span class="updated" data-lastupdated={$lastUpdated}>Updated {formatTime($lastUpdated)}</span>
     <a class="trailer-link" href="http://localhost:11000/" target="_blank" rel="noopener">Original NVIDIA dashboard</a>
   </footer>
@@ -69,25 +61,6 @@
     gap: 1rem;
   }
   .title { min-width: 0; }
-  .follow {
-    flex-shrink: 0;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #c7d2fe;
-    text-decoration: none;
-    white-space: nowrap;
-    border: 1px solid #2a2a2a;
-    background: #111;
-    border-radius: 999px;
-    padding: 0.4rem 0.85rem;
-    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-  }
-  .follow:hover {
-    color: #e0e7ff;
-    border-color: #3b82f6;
-    background: #151b2b;
-  }
-  .follow:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
   h1 {
     font-size: 1.5rem;
     font-weight: 600;
