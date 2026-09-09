@@ -23,7 +23,7 @@
 #   --reinstall       Re-download over an existing installation
 #   -h, --help        Show this help
 #
-set -euo pipefail
+set -eu
 
 REPO="walkthegrowth-ctrl/spark-dashboard"
 ASSET="spark-dashboard-aarch64-linux.zip"
@@ -106,7 +106,7 @@ _bar_tprev=""
 _bar_draw() { # $1 = bytes done   $2 = total bytes or "" for unknown
   local done=${1:-0} total=${2:-} now fill pct speed eta f t line
   now=$(date +%s%N 2>/dev/null || date +%s)
-  case "$now" in *[!0-9]*) now=$RANDOM ;; esac
+  case "$now" in *[!0-9]*) now=$(date +%s) ;; esac
   [ -z "$_bar_t0" ] && _bar_t0=$now
   _spin_i=$(( (_spin_i + 1) % 10 ))
 
@@ -135,7 +135,7 @@ _bar_draw() { # $1 = bytes done   $2 = total bytes or "" for unknown
     [ -n "$rate" ] && line="$line ${C_DIM}${rate}/s${C_RESET}"
     [ -n "$eta" ] && line="$line$eta"
   else
-    line="  ${SPIN:$_spin_i:1}  ${C_DIM}downloading… $(bytes_human "$done")${C_RESET}"
+    line="  $(printf '%s' "$SPIN" | cut -c$((_spin_i + 1)) | head -c1)  ${C_DIM}downloading… $(bytes_human "$done")${C_RESET}"
   fi
   _bar_prev=$done
   _bar_tprev=$now
