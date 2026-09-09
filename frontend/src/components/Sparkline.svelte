@@ -85,7 +85,7 @@
     <div class="empty">collecting…</div>
   </div>
 {:else}
-  <div class="chart" bind:this={container} on:mousemove={position} on:mouseleave={clear}>
+  <div class="chart" bind:this={container} role="figure" aria-label={label} on:mousemove={position} on:mouseleave={clear}>
     <div class="head">
       <span class="name">{label}</span>
       <span class="cur" style="color: {color}">{format(current)}</span>

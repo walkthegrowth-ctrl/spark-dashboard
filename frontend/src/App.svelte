@@ -102,8 +102,10 @@
     color: #888;
     margin-top: 0.25rem;
   }
-  main > * + * {
-    margin-top: 1.5rem;
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
   .trailer {
     margin-top: 2rem;
