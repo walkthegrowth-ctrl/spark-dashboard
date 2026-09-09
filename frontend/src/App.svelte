@@ -1,8 +1,29 @@
 <script>
+  import { onMount } from 'svelte';
   import MemoryStats from './components/MemoryStats.svelte';
   import ThermalStats from './components/ThermalStats.svelte';
   import ComputeStats from './components/ComputeStats.svelte';
   import { lastUpdated } from './lib/lastUpdated.js';
+
+  let hostname = '';
+
+  // Fetched exactly once per page load (no polling): the server reads the OS
+  // hostname on demand, so this is a cheap one-shot lookup and silently does
+  // nothing when the endpoint is unavailable.
+  onMount(async () => {
+    try {
+      const resp = await fetch('/api/host');
+      if (resp.ok) {
+        const { hostname: name } = await resp.json();
+        if (name) {
+          hostname = name;
+          document.title = `Spark Dashboard · ${name}`;
+        }
+      }
+    } catch {
+      /* keep the default title */
+    }
+  });
 
   function formatTime(ms) {
     if (!ms) return 'waiting for data…';
@@ -27,6 +48,9 @@
       <h1>Spark Dashboard</h1>
       <p class="subtitle">NVIDIA DGX Spark Monitoring</p>
     </div>
+    {#if hostname}
+      <div class="host" title="Machine hostname">{hostname}</div>
+    {/if}
   </header>
 
   <main>
@@ -65,6 +89,13 @@
     font-size: 1.5rem;
     font-weight: 600;
     color: #fff;
+  }
+  .host {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .subtitle {
     font-size: 0.875rem;

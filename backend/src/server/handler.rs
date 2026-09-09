@@ -140,7 +140,12 @@ pub fn start_server(host: &str, port: u16, db_path: &str, ipc_socket: &str) {
 /// connection, fully independent of every in-flight request.
 fn serve_request(mut request: Request, db_path: &str, ipc_socket: &str) {
     let url = request.url().to_string();
-    let (status, body, ct) = if url.starts_with("/api/") {
+    let (status, body, ct) = if url == "/api/host" {
+        // Static host information served by the server itself: reads the OS
+        // hostname on demand, opens no DB connection, sends no IPC, so it is
+        // always available and can never contend with the collector.
+        (StatusCode(200), crate::server::host::hostname_response(), "application/json".to_string())
+    } else if url.starts_with("/api/") {
         match Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
             Ok(conn) => handle_api(&conn, &url, ipc_socket, &mut request),
             Err(e) => (
@@ -184,6 +189,15 @@ fn serve_request(mut request: Request, db_path: &str, ipc_socket: &str) {
                 "about.html not found (run: cd frontend && npm run build)".to_string(),
                 "text/plain".to_string(),
             )
+        }
+    } else if url == "/favicon.svg" {
+        // Browser tab icon, shipped from frontend/public → backend/static at
+        // build time (like about.html; not under /assets/).
+        let icon_path = format!("{}/favicon.svg", static_dir());
+        if let Some(content) = fs::read_to_string(&icon_path).ok() {
+            (StatusCode(200), content, "image/svg+xml".to_string())
+        } else {
+            (StatusCode(404), "favicon.svg not found".to_string(), "text/plain".to_string())
         }
     } else {
         (StatusCode(404), "Not Found".to_string(), "text/plain".to_string())
