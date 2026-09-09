@@ -84,15 +84,26 @@ Runtime state (pid files, last-used port, log files) lives in `~/.spark/.spark/`
 
 ## Uninstall
 
-```bash
-# remove the install only — keeps the history DB
-curl -fsSL https://github.com/walkthegrowth-ctrl/spark-dashboard/releases/latest/download/install.sh | sh -s -- --dest ~/.spark --uninstall
+Stops the daemons and removes the install. The history database at
+`~/.local/share/spark-dashboard` is **kept** by default — pass `--purge-db`
+to delete it too.
 
-# remove the install and also delete the local history DB
-curl -fsSL https://github.com/walkthegrowth-ctrl/spark-dashboard/releases/latest/download/install.sh | sh -s -- --dest ~/.spark --uninstall --purge-db
+```bash
+# 1) Stop the daemons (if running)
+~/.spark/spark.sh stop
+
+# 2) Remove the install
+#    keeps history DB:
+curl -fsSL https://github.com/walkthegrowth-ctrl/spark-dashboard/releases/latest/download/install.sh | sh -s -- --uninstall
+#    removes history DB too:
+curl -fsSL https://github.com/walkthegrowth-ctrl/spark-dashboard/releases/latest/download/install.sh | sh -s -- --uninstall --purge-db
 ```
 
-Or, if you'd rather do it by hand: `~/.spark/spark.sh stop`, then `rm -rf ~/.spark`.
+By hand: `~/.spark/spark.sh stop`, then `rm -rf ~/.spark`
+(and `rm -rf ~/.local/share/spark-dashboard` to also drop the history DB).
+
+If you installed to a non-default `--dest`, prepend it:
+`… install.sh | sh -s -- --dest /opt/spark --uninstall`.
 
 ## Configuration
 
