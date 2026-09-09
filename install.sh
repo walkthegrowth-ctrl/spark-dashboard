@@ -31,8 +31,9 @@ CHECKSUM_NAME="spark-dashboard-aarch64-linux.zip.sha256"
 
 # --- terminal cosmetics -------------------------------------------------------
 if [ -t 1 ]; then
-  C_CYAN=$'\033[36m'; C_GREEN=$'\033[32m'; C_YELLOW=$'\033[33m'
-  C_RED=$'\033[31m';  C_DIM=$'\033[2m';   C_BOLD=$'\033[1m'; C_RESET=$'\033[0m'
+  ESC=$(printf '\033')
+  C_CYAN="${ESC}[36m"; C_GREEN="${ESC}[32m"; C_YELLOW="${ESC}[33m"
+  C_RED="${ESC}[31m";  C_DIM="${ESC}[2m";   C_BOLD="${ESC}[1m"; C_RESET="${ESC}[0m"
 else
   C_CYAN=""; C_GREEN=""; C_YELLOW=""; C_RED=""; C_DIM=""; C_BOLD=""; C_RESET=""
 fi
@@ -91,6 +92,7 @@ banner() {
 
 file_size() { # $1 = path -> number of bytes (0 if unreadable)
   local n
+  [ -e "$1" ] || { echo 0; return 0; }
   n=$(wc -c < "$1" 2>/dev/null || true)
   case "$n" in (''|*[!0-9]) echo 0 ;; (*) echo "$n" ;; esac
 }
