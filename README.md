@@ -4,6 +4,12 @@ A lightweight, local monitoring panel for the NVIDIA DGX Spark (GB10). MVP — i
 
 Built by **Embracing Challenges** ([@walkthegrowth](https://x.com/walkthegrowth)).
 
+<p align="center">
+  <a href="https://raw.githubusercontent.com/walkthegrowth-ctrl/spark-dashboard/main/docs/media/demo.mp4">
+    <img src="https://raw.githubusercontent.com/walkthegrowth-ctrl/spark-dashboard/main/docs/media/demo.png" alt="Spark Dashboard demo — thermal, memory, compute and power cards with live history charts" width="100%">
+  </a>
+</p>
+
 ---
 
 ## What it does
